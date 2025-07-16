@@ -6,7 +6,7 @@ project "App"
    location "build"
    kind "WindowedApp"
    language "C++"
-   cppdialect "C+++23"
+   cppdialect "C++latest"
    staticruntime "on"
    warnings "Extra"
 
