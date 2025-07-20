@@ -13,7 +13,20 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	 "postCreateCommand": "gcc -v && sudo apt update && sudo apt upgrade -y"
+	 "postCreateCommand": "gcc -v && sudo apt update && sudo apt upgrade  -y",
+    
+	"runArgs": [
+		"--env", "DISPLAY",                        
+		"--volume", "/tmp/.X11-unix:/tmp/.X11-unix", 
+		"--device", "/dev/dri"                     
+	],
+
+	"containerEnv": {
+		"XDG_RUNTIME_DIR": "/tmp/xdg-runtime-${localEnv:USER}",
+		"LIBGL_DRI3_DISABLE": "1",
+		"LIBGL_ALWAYS_SOFTWARE": "1"
+	}
+	
 
 	// Configure tool-specific properties.
 	// "customizations": {},
