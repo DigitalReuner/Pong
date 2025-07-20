@@ -1,4 +1,4 @@
-add_executable(game main.cpp)
+add_executable(game main.cpp vulkanapp.cpp)
 
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${VULKAN_SDK}/cmake")
