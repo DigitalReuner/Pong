@@ -8,12 +8,11 @@
 
 class VulkanApp {
 public:
-    void run() {
-        initWindow();
-        initVulkan();
-        mainLoop();
-        cleanup();
-    }
+    void run();
+private:
+    void mainLoop();
+    void cleanup();
+    void drawFrame();
 
 private:
     GLFWwindow* window;
@@ -21,6 +20,7 @@ private:
     VkSurfaceKHR surface;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkPhysicalDeviceFeatures deviceFeatures{};
+    const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     VkDevice device;
     VkQueue graphicsQueue;
     VkSwapchainKHR swapChain;
@@ -40,7 +40,7 @@ private:
     VkSemaphore imageAvailableSemaphore;
     VkSemaphore renderFinishedSemaphore;
     VkFence inFlightFence;
-
+private:
 
 
 
@@ -61,7 +61,6 @@ private:
     void createCommandPool();
     void createCommandBuffer();
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-    void drawFrame();
     void createSyncObjects();
 
     struct QueueFamilyIndices {
@@ -94,18 +93,9 @@ private:
     void printExtensionSupport();
 
 
-    void mainLoop() {
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();
-            drawFrame();
-        }
-    }
     static std::vector<char> readFile(const std::string& filename);
 
-    void cleanup();
 
-private:
-    const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 
 };
