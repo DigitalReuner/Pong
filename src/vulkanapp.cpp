@@ -12,6 +12,7 @@ void VulkanApp::initWindow()
 void VulkanApp::initVulkan()
 {
     createInstance();
+    // printExtensionSupport();
     createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
@@ -21,7 +22,7 @@ void VulkanApp::createInstance()
 {
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "Vulkan GLFW";
+    appInfo.pApplicationName = "Hello Triangle";
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -30,7 +31,7 @@ void VulkanApp::createInstance()
     uint32_t glfwExtensionCount = 0;
     const char **glfwExtensions;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-    std::vector<const char*> deviceExtensions(glfwExtensions,glfwExtensions + glfwExtensionCount) ;  
+    std::vector<const char *> deviceExtensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -124,7 +125,8 @@ void VulkanApp::createLogicalDevice()
     vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 }
 
-bool VulkanApp::isDeviceSuitable(VkPhysicalDevice device) {
+bool VulkanApp::isDeviceSuitable(VkPhysicalDevice device)
+{
     QueueFamilyIndices indices = findQueueFamilies(device);
 
     bool extensionsSupported = checkDeviceExtensionSupport(device);
@@ -132,7 +134,8 @@ bool VulkanApp::isDeviceSuitable(VkPhysicalDevice device) {
     return indices.isComplete() && extensionsSupported;
 }
 
-bool VulkanApp::checkDeviceExtensionSupport(VkPhysicalDevice device) {
+bool VulkanApp::checkDeviceExtensionSupport(VkPhysicalDevice device)
+{
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
@@ -141,14 +144,27 @@ bool VulkanApp::checkDeviceExtensionSupport(VkPhysicalDevice device) {
 
     std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
-    for (const auto& extension : availableExtensions) {
+    for (const auto &extension : availableExtensions)
+    {
         requiredExtensions.erase(extension.extensionName);
     }
 
     return requiredExtensions.empty();
 }
 
+void VulkanApp::printExtensionSupport()
+{
+    uint32_t extensionCount = 0;
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+    std::vector<VkExtensionProperties> extensions(extensionCount);
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+    std::cout << "available extensions:\n";
+    for (VkExtensionProperties extension : extensions)
+    {
 
+        std::cout << '\t' << extension.extensionName << '\n';
+    }
+}
 
 void VulkanApp::cleanup()
 {

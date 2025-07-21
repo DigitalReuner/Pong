@@ -45,6 +45,8 @@ private:
     bool isDeviceSuitable(VkPhysicalDevice device);
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 
+    void printExtensionSupport();
+
 
     void mainLoop() {
         while (!glfwWindowShouldClose(window)) {
