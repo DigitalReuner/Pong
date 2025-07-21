@@ -46,3 +46,4 @@ build
 bin
 bin-int
 Makefile
+extern
