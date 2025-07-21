@@ -25,6 +25,8 @@ private:
 
     VkPhysicalDeviceFeatures deviceFeatures{};
 
+
+
     void initWindow();
 
     void initVulkan();
@@ -37,8 +39,14 @@ private:
         std::optional<uint32_t> graphicsFamily;
         bool isComplete() { return graphicsFamily.has_value(); }
     };
+    struct SwapChainSupportDetails {
+        VkSurfaceCapabilitiesKHR capabilities;
+        std::vector<VkSurfaceFormatKHR> formats;
+        std::vector<VkPresentModeKHR> presentModes;
+    };
 
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
 
     void pickPhysicalDevice();
 
@@ -57,6 +65,7 @@ private:
     }
 
     void cleanup();
+
 private:
     const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
