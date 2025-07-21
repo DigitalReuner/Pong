@@ -20,6 +20,7 @@ private:
     VkInstance instance;
     VkSurfaceKHR surface;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VkPhysicalDeviceFeatures deviceFeatures{};
     VkDevice device;
     VkQueue graphicsQueue;
     VkSwapchainKHR swapChain;
@@ -31,8 +32,8 @@ private:
     VkRenderPass renderPass;
     VkPipeline graphicsPipeline;
     std::vector<VkFramebuffer> swapChainFramebuffers;
-
-    VkPhysicalDeviceFeatures deviceFeatures{};
+    VkCommandPool commandPool;
+    VkCommandBuffer commandBuffer;
 
 
 
@@ -50,7 +51,10 @@ private:
     void createGraphicsPipeline();
     void createRenderPass();
     void createFramebuffers();
-
+    void createCommandPool();
+    void createCommandBuffer();
+    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+    void drawFrame();
 
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
@@ -85,6 +89,7 @@ private:
     void mainLoop() {
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
+            drawFrame();
         }
     }
     static std::vector<char> readFile(const std::string& filename);
