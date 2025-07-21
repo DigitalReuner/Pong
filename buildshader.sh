@@ -1,0 +1,2 @@
+/home/kinggrey/Documents/code/Pong/extern/vulkansdk/x86_64/bin/glslc src/shader/shader.frag -o src/shader/frag.spv
+/home/kinggrey/Documents/code/Pong/extern/vulkansdk/x86_64/bin/glslc src/shader/shader.vert -o src/shader/vert.spv

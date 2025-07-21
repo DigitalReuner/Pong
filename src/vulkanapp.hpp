@@ -39,10 +39,11 @@ private:
     void createSwapChain();
 
     void createInstance();
-
+    
     void createSurface();
     void createImageViews();
-
+    
+    void createGraphicsPipeline();
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
@@ -86,3 +87,4 @@ private:
 
 
 };
+
