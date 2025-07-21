@@ -23,6 +23,8 @@ private:
     VkDevice device;
     VkQueue graphicsQueue;
 
+    VkPhysicalDeviceFeatures deviceFeatures{};
+
     void initWindow();
 
     void initVulkan();
