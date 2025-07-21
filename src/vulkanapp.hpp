@@ -27,23 +27,31 @@ private:
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
+    VkPipelineLayout pipelineLayout;
+    VkRenderPass renderPass;
+    VkPipeline graphicsPipeline;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
 
     VkPhysicalDeviceFeatures deviceFeatures{};
 
 
 
     void initWindow();
-
+    
     void initVulkan();
-
+    
     void createSwapChain();
-
+    
     void createInstance();
     
     void createSurface();
     void createImageViews();
-    
+    VkShaderModule createShaderModule(const std::vector<char>& code);
     void createGraphicsPipeline();
+    void createRenderPass();
+    void createFramebuffers();
+
+
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
@@ -79,6 +87,7 @@ private:
             glfwPollEvents();
         }
     }
+    static std::vector<char> readFile(const std::string& filename);
 
     void cleanup();
 
