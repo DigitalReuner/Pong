@@ -23,6 +23,10 @@ private:
     VkDevice device;
     VkQueue graphicsQueue;
     VkSwapchainKHR swapChain;
+    std::vector<VkImage> swapChainImages;
+    VkFormat swapChainImageFormat;
+    VkExtent2D swapChainExtent;
+    std::vector<VkImageView> swapChainImageViews;
 
     VkPhysicalDeviceFeatures deviceFeatures{};
 
@@ -37,6 +41,7 @@ private:
     void createInstance();
 
     void createSurface();
+    void createImageViews();
 
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
