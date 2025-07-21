@@ -15,9 +15,19 @@ private:
     void drawFrame();
 
 private:
+
+    
+    const int MAX_FRAMES_IN_FLIGHT = 2;
+
+    //state
+    uint32_t currentFrame = 0;
+    bool framebufferResized = false;
+
+    //instances
     GLFWwindow* window;
     VkInstance instance;
     VkSurfaceKHR surface;
+    //setup
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkPhysicalDeviceFeatures deviceFeatures{};
     const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -33,13 +43,13 @@ private:
     VkPipeline graphicsPipeline;
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkCommandPool commandPool;
-    VkCommandBuffer commandBuffer;
+    std::vector<VkCommandBuffer> commandBuffers;
     VkQueue presentQueue;
 
     //syncronisation
-    VkSemaphore imageAvailableSemaphore;
-    VkSemaphore renderFinishedSemaphore;
-    VkFence inFlightFence;
+    std::vector<VkSemaphore> imageAvailableSemaphore;
+    std::vector<VkSemaphore> renderFinishedSemaphore;
+    std::vector<VkFence> inFlightFence;
 private:
 
 
@@ -59,9 +69,11 @@ private:
     void createRenderPass();
     void createFramebuffers();
     void createCommandPool();
-    void createCommandBuffer();
+    void createCommandBuffers();
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void createSyncObjects();
+    void cleanupSwapChain();
+    void recreateSwapChain();
 
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
@@ -95,7 +107,7 @@ private:
 
     static std::vector<char> readFile(const std::string& filename);
 
-
+    static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
 
 };
