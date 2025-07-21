@@ -57,6 +57,8 @@ private:
     VkSurfaceKHR surface;
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
     //setup
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkPhysicalDeviceFeatures deviceFeatures{};
@@ -107,6 +109,7 @@ private:
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void createVertexBuffers();
+    void createVertexBuffer();
 
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
