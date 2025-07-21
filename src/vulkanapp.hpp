@@ -34,6 +34,13 @@ private:
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkCommandPool commandPool;
     VkCommandBuffer commandBuffer;
+    VkQueue presentQueue;
+
+    //syncronisation
+    VkSemaphore imageAvailableSemaphore;
+    VkSemaphore renderFinishedSemaphore;
+    VkFence inFlightFence;
+
 
 
 
@@ -55,6 +62,7 @@ private:
     void createCommandBuffer();
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void drawFrame();
+    void createSyncObjects();
 
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
