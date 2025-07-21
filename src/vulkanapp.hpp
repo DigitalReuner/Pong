@@ -22,6 +22,7 @@ private:
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkDevice device;
     VkQueue graphicsQueue;
+    VkSwapchainKHR swapChain;
 
     VkPhysicalDeviceFeatures deviceFeatures{};
 
@@ -31,13 +32,16 @@ private:
 
     void initVulkan();
 
+    void createSwapChain();
+
     void createInstance();
 
     void createSurface();
 
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
-        bool isComplete() { return graphicsFamily.has_value(); }
+        std::optional<uint32_t> presentFamily;
+        bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value();}
     };
     struct SwapChainSupportDetails {
         VkSurfaceCapabilitiesKHR capabilities;
@@ -47,6 +51,12 @@ private:
 
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+
+    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+
+    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
+
+    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
 
     void pickPhysicalDevice();
 
