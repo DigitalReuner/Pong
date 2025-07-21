@@ -17,6 +17,8 @@ RUN sudo apt-get -y update && sudo apt-get install  -y libgl1-mesa-dri \
     libglfw3 \
     libglfw3-dev \
     libxkbcommon-dev \
-    libgl1-mesa-dri 
+    libgl1-mesa-dri \
+    libglm-dev
+
 
 
