@@ -29,3 +29,11 @@ target_compile_options(game PRIVATE
 )
 # target_include_directories(game PUBLIC ../extern/glfw-3.4/include)
 # target_link_libraries(game PUBLIC glfw)
+include(FetchContent)
+FetchContent_Declare(
+  stb
+  GIT_REPOSITORY https://github.com/nothings/stb.git
+  #SOURCE_DIR "${CMAKE_SOURCE_DIR}/external/stb"
+)
+FetchContent_MakeAvailable(stb)
+target_include_directories(game PRIVATE "${stb_SOURCE_DIR}")
