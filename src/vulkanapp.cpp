@@ -384,7 +384,6 @@ void VulkanApp::cleanup()
     createCommandBuffers();
     vkDestroyCommandPool(device, commandPool, nullptr);
     
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, renderPass, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     
