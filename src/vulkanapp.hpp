@@ -11,6 +11,9 @@
 #include <glm/glm.hpp>
 
 
+
+
+
 struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
@@ -64,6 +67,8 @@ private:
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void*> uniformBuffersMapped;
+    VkImageView textureImageView;
+    VkSampler textureSampler;
 
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
@@ -128,6 +133,7 @@ private:
     void recreateSwapChain();
     void createVertexBuffers();
     void createVertexBuffer();
+    void createTextureImageView();
     
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
@@ -174,4 +180,24 @@ private:
     void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+    VkImageView createImageView(VkImage image, VkFormat format);
+    void createTextureSampler();
+
+
+
+
+    const std::vector<const char*> validationLayers = {
+        "VK_LAYER_KHRONOS_validation"
+    };
+
+    #ifdef NDEBUG
+        const bool enableValidationLayers = false;
+    #else
+        const bool enableValidationLayers = true;
+    #endif
+
+
+    bool checkValidationLayerSupport();
 };
