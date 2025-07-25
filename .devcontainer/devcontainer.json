@@ -24,8 +24,7 @@
 	"containerEnv": {
 		"XDG_RUNTIME_DIR": "/tmp/xdg-runtime-${localEnv:USER}",
 		"LIBGL_DRI3_DISABLE": "1",
-		"LIBGL_ALWAYS_SOFTWARE": "1",
-		"VK_LOADER_DEBUG":"all"
+		"LIBGL_ALWAYS_SOFTWARE": "1"
 	}
 	
 

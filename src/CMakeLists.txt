@@ -36,4 +36,14 @@ FetchContent_Declare(
   #SOURCE_DIR "${CMAKE_SOURCE_DIR}/external/stb"
 )
 FetchContent_MakeAvailable(stb)
-target_include_directories(game PRIVATE "${stb_SOURCE_DIR}")
+
+FetchContent_Declare(
+  tinyobjloader
+  GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git
+  GIT_TAG "release"
+  #SOURCE_DIR "${CMAKE_SOURCE_DIR}/external/tinyobjloader"
+)
+FetchContent_MakeAvailable(tinyobjloader)
+
+
+target_include_directories(game PRIVATE "${stb_SOURCE_DIR}" "${tinyobjloader_SOURCE_DIR}")
