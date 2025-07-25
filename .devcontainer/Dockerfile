@@ -14,11 +14,19 @@ RUN sudo apt-get -y update && sudo apt-get install  -y libgl1-mesa-dri \
     mesa-vulkan-drivers \
     vulkan-tools \
     vulkan-validationlayers \
-    libglfw3 \
-    libglfw3-dev \
+    # libglfw3 \
+    # libglfw3-dev \
     libxkbcommon-dev \
     libgl1-mesa-dri \
-    libglm-dev
+    libglm-dev\
+    libx11-dev \
+    libxrandr-dev \
+    libxinerama-dev \
+    libxcursor-dev \
+    libxi-dev \
+    libxext-dev \
+    libxfixes-dev
+    libwayland-dev 
 
 
 

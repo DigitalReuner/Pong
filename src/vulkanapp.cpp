@@ -926,7 +926,6 @@ void VulkanApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
 
 void VulkanApp::drawFrame()
 {
-    std::cout << "hi" << std::endl;
      vkWaitForFences(device, 1, &inFlightFence[currentFrame], VK_TRUE, UINT64_MAX);
     
     uint32_t imageIndex;
