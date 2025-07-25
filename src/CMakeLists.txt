@@ -1,4 +1,5 @@
 include(FetchContent)
+include(CheckIncludeFile)
 add_executable(game main.cpp vulkanapp.cpp)
 set_target_properties(game PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -15,6 +16,15 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/glfw/glfw.git
   GIT_TAG latest
   )
+check_include_file("wayland-client-core.h" HAVE_WAYLAND_HEADERS)
+
+if (NOT HAVE_WAYLAND_HEADERS)
+  message(STATUS "Wayland not found – disabling Wayland support in GLFW")
+  set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "Disable Wayland in GLFW" FORCE)
+else()
+  message(STATUS "Wayland found – enabling Wayland support in GLFW")
+  set(GLFW_BUILD_WAYLAND ON CACHE BOOL "Enable Wayland in GLFW" FORCE)
+endif()
 FetchContent_MakeAvailable(glfw)
 
 FetchContent_Declare(
@@ -31,33 +41,35 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(tinyobjloader)
 
 
-# Vulkan-Headers
+set(FETCHCONTENT_BASE_DIR "${CMAKE_BINARY_DIR}/external")
+include(FetchContent)
+FetchContent_Declare(
+  VulkanSDK
+    URL        "https://sdk.lunarg.com/sdk/download/1.4.321.1/linux/vulkansdk-linux-x86_64-1.4.321.1.tar.xz"
+    SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/vulkansdk")
+FetchContent_MakeAvailable(VulkanSDK)
 FetchContent_Declare(
   VulkanHeaders
   GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
   GIT_TAG "main"
 )
 FetchContent_MakeAvailable(VulkanHeaders)
-
-# Vulkan-Loader
 FetchContent_Declare(
   VulkanLoader
   GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Loader.git
   GIT_TAG "main"
-)   
+)
 set(BUILD_WSI_XCB OFF CACHE BOOL "" FORCE)
 set(BUILD_WSI_XLIB ON CACHE BOOL "" FORCE)
 set(BUILD_WSI_WAYLAND OFF CACHE BOOL "" FORCE)
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(BUILD_LOADER_STATIC ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(VulkanLoader)
-
-
-
-target_include_directories(game PRIVATE
+  
+target_include_directories(game PUBLIC
   "${stb_SOURCE_DIR}"
   "${tinyobjloader_SOURCE_DIR}"
-  ${VulkanHeaders_SOURCE_DIR}/include
+  "${FETCHCONTENT_BASE_DIR}/vulkansdk/x86_64/include"
 )
 target_link_libraries(
   game
@@ -79,4 +91,3 @@ target_compile_options(game PRIVATE
   )
     
     
-target_include_directories(game PRIVATE "${stb_SOURCE_DIR}" "${tinyobjloader_SOURCE_DIR}")
