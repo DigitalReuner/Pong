@@ -65,6 +65,8 @@
         "thread": "cpp",
         "variant": "cpp",
         "chrono": "cpp",
-        "iomanip": "cpp"
+        "iomanip": "cpp",
+        "list": "cpp",
+        "typeindex": "cpp"
     }
 }
