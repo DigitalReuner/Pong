@@ -127,6 +127,8 @@ private:
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
     VkQueue presentQueue;
+    VkDebugUtilsMessengerEXT debugMessenger;
+
 
     //syncronisation
     std::vector<VkSemaphore> imageAvailableSemaphore;
@@ -137,13 +139,20 @@ private:
 
 
     void initWindow();
-    
     void initVulkan();
     
     void createSwapChain();
-    
+
+    std::vector<const char *> getRequiredExtensions();
+
     void createInstance();
-    
+
+    void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
+
+    void setupDebugMessenger();
+
+    VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
+
     void createSurface();
     void createImageViews();
     VkShaderModule createShaderModule(const std::vector<char>& code);
@@ -241,4 +250,15 @@ private:
 
 
     void loadModel();
+
+    
+  
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* ) {
+        std::cerr << "VkDebugUtilsMessageSeverityFlagBitsEXT: " << (int)messageSeverity << std::endl;
+        std::cerr << "VkDebugUtilsMessageTypeFlagsEXT: " << (int)messageType << std::endl;
+        std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+        
+        return VK_FALSE;
+    }
+    
 };
