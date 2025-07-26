@@ -438,6 +438,7 @@ void VulkanApp::mainLoop(){
 
 void VulkanApp::cleanup()
 {
+    vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyImageView(device, depthImageView, nullptr);
     vkDestroyImage(device, depthImage, nullptr);
     vkFreeMemory(device, depthImageMemory, nullptr);
