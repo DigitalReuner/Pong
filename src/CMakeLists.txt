@@ -80,6 +80,12 @@ target_link_libraries(
   ${Vulkan_LIBRARIES}
 )
  
+
+add_custom_command(TARGET game POST_BUILD 
+COMMAND mkdir "${CMAKE_BINARY_DIR}/shader" -p
+COMMAND "${FETCHCONTENT_BASE_DIR}/vulkansdk/x86_64/bin/glslc" "${CMAKE_SOURCE_DIR}/src/shader/shader.frag" -o "${CMAKE_BINARY_DIR}/shader/frag.spv"
+COMMAND "${FETCHCONTENT_BASE_DIR}/vulkansdk/x86_64/bin/glslc" "${CMAKE_SOURCE_DIR}/src/shader/shader.vert" -o "${CMAKE_BINARY_DIR}/shader/vert.spv"
+)
     
     
     
