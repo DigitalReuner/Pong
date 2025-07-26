@@ -592,7 +592,7 @@ void printPhysicalDeviceName(VkPhysicalDevice device) {
 
 VulkanApp::SwapChainSupportDetails VulkanApp::querySwapChainSupport(VkPhysicalDevice device)
 {
-    printPhysicalDeviceName(device);
+    
     SwapChainSupportDetails details;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
     uint32_t formatCount = 0;
@@ -654,7 +654,7 @@ void VulkanApp::createGraphicsPipeline() {
 
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
-    std::cout << vertShaderModule << fragShaderModule << std::endl;
+    
 
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
