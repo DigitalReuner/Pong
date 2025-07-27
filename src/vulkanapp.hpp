@@ -62,6 +62,19 @@ namespace std {
         }
     };
 }
+
+class DrawableObject{
+public:
+    std::string modelPath;
+    std::string textruePath;
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    void loadModel(const std::string &modelPath);
+
+};
+
+
+
 class VulkanApp {
 public:
     void run();
@@ -84,8 +97,10 @@ private:
     VkInstance instance;
     VkSurfaceKHR surface;
 
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
+    //std::vector<Vertex> vertices;
+    //std::vector<uint32_t> indices;
+    std::vector<DrawableObject> objects;
+
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
     VkBuffer indexBuffer;
@@ -168,11 +183,11 @@ private:
     void updateUniformBuffer(uint32_t currentImage);
     void createDescriptorPool();
     void createDescriptorSets();
-    void createTextureImage();
+    void createTextureImage(const std::string &texturePath);
     void cleanupSwapChain();
     void recreateSwapChain();
     void createVertexBuffers();
-    void createVertexBuffer();
+    void createIndexBuffers();
     void createTextureImageView();
     void createDepthResources();
 
@@ -249,7 +264,7 @@ private:
     bool checkValidationLayerSupport();
 
 
-    void loadModel();
+    void loadModel(const std::string &modelPath);
 
     
   
