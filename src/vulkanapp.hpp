@@ -1,3 +1,4 @@
+#pragma once
 #define GLFW_INCLUDE_VULKAN
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
@@ -11,7 +12,7 @@
 #include <glm/glm.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
-
+#include "drawableObject.hpp"
 
 
 
@@ -63,17 +64,10 @@ namespace std {
     };
 }
 
-class DrawableObject{
-public:
-    std::string modelPath;
-    std::string textruePath;
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    void loadModel(const std::string &modelPath);
-
-};
 
 
+
+constexpr int MAX_OBJECTS = 3;
 
 class VulkanApp {
 public:
@@ -99,16 +93,16 @@ private:
 
     //std::vector<Vertex> vertices;
     //std::vector<uint32_t> indices;
-    std::vector<DrawableObject> objects;
+    std::array<DrawableObject, MAX_OBJECTS> gameObjects;
 
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferMemory;
 
-    std::vector<VkBuffer> uniformBuffers;
-    std::vector<VkDeviceMemory> uniformBuffersMemory;
-    std::vector<void*> uniformBuffersMapped;
+    // std::vector<VkBuffer> uniformBuffers;
+    // std::vector<VkDeviceMemory> uniformBuffersMemory;
+    // std::vector<void*> uniformBuffersMapped;
     
     VkImage depthImage;
     VkDeviceMemory depthImageMemory;
@@ -121,7 +115,7 @@ private:
     
 
     VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> descriptorSets;
+    //std::vector<VkDescriptorSet> descriptorSets;
 
     //setup
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -168,6 +162,7 @@ private:
 
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger);
 
+    void setupGameObjects();
     void createSurface();
     void createImageViews();
     VkShaderModule createShaderModule(const std::vector<char>& code);

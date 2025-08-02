@@ -1,6 +1,6 @@
 include(FetchContent)
 include(CheckIncludeFile)
-add_executable(game main.cpp vulkanapp.cpp)
+add_executable(game main.cpp vulkanapp.cpp drawableObject.cpp)
 set_target_properties(game PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 
