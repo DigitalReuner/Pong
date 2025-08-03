@@ -10,6 +10,7 @@ set_target_properties(game PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DI
 
 
 
+
 if(DEFINED VULKAN_SDK AND NOT DEFINED VulkanSDK_ROOT)
   set(VulkanSDK_ROOT $ENV{VULKAN_SDK} CACHE PATH "Root of Vulkan build/install")
 endif()
@@ -20,7 +21,6 @@ find_library(VULKAN_LIBRARY
   NAMES vulkan
   HINTS "${VulkanSDK_ROOT}/lib" "${VulkanSDK_ROOT}/lib64"
 )
-
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${VULKAN_SDK}/cmake")
 
 
@@ -76,36 +76,7 @@ FetchContent_Declare(
   )
 FetchContent_MakeAvailable(tinygltf)
 
-# # FetchContent_Declare(
-# #   VulkanSDK
-# #     URL        "https://sdk.lunarg.com/sdk/download/1.4.321.1/linux/vulkansdk-linux-x86_64-1.4.321.1.tar.xz"
-# #     SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/vulkansdk")
-# # FetchContent_MakeAvailable(VulkanSDK)
 
-# FetchContent_Declare(
-#   VulkanHeaders
-#   GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
-#   GIT_TAG "main"
-# )
-# FetchContent_MakeAvailable(VulkanHeaders)
-
-# # FetchContent_Declare(
-# #   VulkanLoader
-# #   GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Loader.git
-# #   GIT_TAG "main"
-# # )
-# # set(BUILD_WSI_XCB OFF CACHE BOOL "" FORCE)
-# # set(BUILD_WSI_XLIB ON CACHE BOOL "" FORCE)
-# # set(BUILD_WSI_WAYLAND OFF CACHE BOOL "" FORCE)
-# # set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
-# # set(BUILD_LOADER_STATIC ON CACHE BOOL "" FORCE)
-# # FetchContent_MakeAvailable(VulkanLoader)
-# FetchContent_Declare(
-#   VulkanHpp
-#   GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Hpp.git
-#   GIT_TAG        "main"  # for reproducibility consider pinning to a specific tag/commit matching your SDK, e.g., v1.3.xxx
-# )
-# FetchContent_MakeAvailable(VulkanHpp)
   
 target_include_directories(game PRIVATE SYSTEM
   SYSTEM "${stb_SOURCE_DIR}"
@@ -115,16 +86,11 @@ target_include_directories(game PRIVATE SYSTEM
   SYSTEM "${ktx_SOURCE_DIR}/include"               
   SYSTEM "${FETCHCONTENT_BASE_DIR}/ktx-src/include" 
   SYSTEM "${tinygltf_SOURCE_DIR}"
-  SYSTEM "${vulkan_hpp_SOURCE_DIR}/include" 
-  SYSTEM "${VulkanSDK_ROOT}/include"
+  #SYSTEM "${vulkan_hpp_SOURCE_DIR}/include" 
+  #SYSTEM "${VulkanSDK_ROOT}/include"
 )
+find_package (Vulkan REQUIRED)
 
-add_library(Vulkan::Vulkan UNKNOWN IMPORTED)
-set_target_properties(Vulkan::Vulkan PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "${VULKAN_INCLUDE_DIR}"
-  IMPORTED_LOCATION "${VULKAN_LIBRARY}"
-  INTERFACE_LINK_LIBRARIES ""  # adjust if you have extra dependencies
-)
 
 target_link_libraries(
   game
@@ -137,18 +103,15 @@ target_link_libraries(
 )
 
 
-set(GLSLC_EXECUTABLE "${VulkanSDK_ROOT}/bin/glslc")
-
 add_custom_command(TARGET game POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/shaders"
-    # COMMAND "${GLSLC_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/src/shaders/shader.frag" -o "${CMAKE_BINARY_DIR}/shaders/frag.spv"
-    # COMMAND "${GLSLC_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/src/shaders/shader.vert" -o "${CMAKE_BINARY_DIR}/shaders/vert.spv"
-    #COMMAND "${GLSLC_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/src/shaders/shader.slang" -o "${CMAKE_BINARY_DIR}/shaders/slang.spv"
+    COMMAND "${VulkanSDK_ROOT}/bin/glslc" "${CMAKE_SOURCE_DIR}/src/shaders/shader.frag" -o "${CMAKE_BINARY_DIR}/shaders/frag.spv"
+    COMMAND "${VulkanSDK_ROOT}/bin/glslc" "${CMAKE_SOURCE_DIR}/src/shaders/shader.vert" -o "${CMAKE_BINARY_DIR}/shaders/vert.spv"
     COMMAND "${VulkanSDK_ROOT}/bin/slangc" "${CMAKE_SOURCE_DIR}/src/shaders/shader.slang" -target spirv -profile spirv_1_4 -emit-spirv-directly -fvk-use-entrypoint-name -entry vertMain -entry fragMain -o "${CMAKE_BINARY_DIR}/shaders/slang.spv"
 )
 
   
-    
+
 target_compile_features(game PUBLIC cxx_std_23)
 # target_compile_options(game PRIVATE
 #   $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>

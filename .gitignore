@@ -47,3 +47,5 @@ bin
 bin-int
 Makefile
 extern
+compile_commands.json
+.cache
