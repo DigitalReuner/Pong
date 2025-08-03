@@ -21,7 +21,10 @@ find_library(VULKAN_LIBRARY
   NAMES vulkan
   HINTS "${VulkanSDK_ROOT}/lib" "${VulkanSDK_ROOT}/lib64"
 )
+find_package(Slang CONFIG HINTS "${VulkanSDK_ROOT}/lib/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/CMake")
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${VULKAN_SDK}/cmake")
+find_package (Vulkan REQUIRED)
 
 
 find_package(PkgConfig REQUIRED)
@@ -89,8 +92,11 @@ target_include_directories(game PRIVATE SYSTEM
   #SYSTEM "${vulkan_hpp_SOURCE_DIR}/include" 
   #SYSTEM "${VulkanSDK_ROOT}/include"
 )
-find_package (Vulkan REQUIRED)
 
+target_compile_definitions(game PUBLIC
+        VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
+        VULKAN_HPP_NO_STRUCT_CONSTRUCTORS=1
+)
 
 target_link_libraries(
   game

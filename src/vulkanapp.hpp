@@ -11,8 +11,7 @@
 #include <limits>
 #include <array>
 #include <chrono>
-//#include <optional>
-
+#include <optional>
 
 #ifdef __INTELLISENSE__
 #include <vulkan/vulkan_raii.hpp>
@@ -38,7 +37,8 @@
 #include <tiny_gltf.h>
 
 // Include KTX library for texture loading
-#include "ktx.h"
+#include <ktx.h>
+
 #if PLATFORM_ANDROID
     #include <android/log.h>
     #include <game-activity/native_app_glue/android_native_app_glue.h>
@@ -82,11 +82,9 @@ constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 constexpr uint64_t FenceTimeout = 100000000;
 // Update paths to use glTF model and KTX2 texture
-const std::string MODEL_PATH = "../models/viking_room.glb";
-const std::string TEXTURE_PATH = "../textures/viking_room.ktx2";
+const std::string MODEL_PATH = "models/viking_room.glb";
+const std::string TEXTURE_PATH = "textures/viking_room.ktx2";
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-// Define the number of objects to render
-constexpr int MAX_OBJECTS = 3;
 
 // Define VpProfileProperties structure for Android only
 #if PLATFORM_ANDROID
@@ -157,33 +155,6 @@ template<> struct std::hash<Vertex> {
     }
 };
 
-// Define a structure to hold per-object data
-struct GameObject {
-    // Transform properties
-    glm::vec3 position = {0.0f, 0.0f, 0.0f};
-    glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
-    glm::vec3 scale = {1.0f, 1.0f, 1.0f};
-
-    // Uniform buffer for this object (one per frame in flight)
-    std::vector<vk::raii::Buffer> uniformBuffers;
-    std::vector<vk::raii::DeviceMemory> uniformBuffersMemory;
-    std::vector<void*> uniformBuffersMapped;
-
-    // Descriptor sets for this object (one per frame in flight)
-    std::vector<vk::raii::DescriptorSet> descriptorSets;
-
-    // Calculate model matrix based on position, rotation, and scale
-    glm::mat4 getModelMatrix() const {
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, position);
-        model = glm::rotate(model, rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-        model = glm::rotate(model, rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::scale(model, scale);
-        return model;
-    }
-};
-
 struct UniformBufferObject {
     alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 view;
@@ -193,24 +164,6 @@ struct UniformBufferObject {
 class VulkanApplication {
 public:
 #if PLATFORM_ANDROID
-    void cleanupAndroid() {
-        // Clean up resources in each GameObject
-        for (auto& gameObject : gameObjects) {
-            // Unmap memory
-            for (size_t i = 0; i < gameObject.uniformBuffersMemory.size(); i++) {
-                if (gameObject.uniformBuffersMapped[i] != nullptr) {
-                    gameObject.uniformBuffersMemory[i].unmapMemory();
-                }
-            }
-
-            // Clear vectors to release resources
-            gameObject.uniformBuffers.clear();
-            gameObject.uniformBuffersMemory.clear();
-            gameObject.uniformBuffersMapped.clear();
-            gameObject.descriptorSets.clear();
-        }
-    }
-
     void run(android_app* app) {
         androidAppState.nativeWindow = app->window;
         androidAppState.app = app;
@@ -236,7 +189,6 @@ public:
 
         if (androidAppState.initialized) {
             device.waitIdle();
-            cleanupAndroid();
         }
     }
 #else
@@ -288,7 +240,7 @@ private:
     GLFWwindow* window = nullptr;
 #endif
 
-    AppInfo appInfo = {};
+    AppInfo appInfo;
     vk::raii::Context                context;
     vk::raii::Instance               instance       = nullptr;
     vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
@@ -325,10 +277,12 @@ private:
     vk::raii::Buffer indexBuffer = nullptr;
     vk::raii::DeviceMemory indexBufferMemory = nullptr;
 
-    // Array of game objects to render
-    std::array<GameObject, MAX_OBJECTS> gameObjects;
+    std::vector<vk::raii::Buffer> uniformBuffers;
+    std::vector<vk::raii::DeviceMemory> uniformBuffersMemory;
+    std::vector<void*> uniformBuffersMapped;
 
     vk::raii::DescriptorPool descriptorPool = nullptr;
+    std::vector<vk::raii::DescriptorSet> descriptorSets;
 
     vk::raii::CommandPool commandPool = nullptr;
     std::vector<vk::raii::CommandBuffer> commandBuffers;
@@ -381,7 +335,6 @@ public:
         loadModel();
         createVertexBuffer();
         createIndexBuffer();
-        setupGameObjects();
         createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
@@ -408,24 +361,7 @@ private:
     }
 
 #if PLATFORM_DESKTOP
-    void cleanup() {
-        // Clean up resources in each GameObject
-        for (auto& gameObject : gameObjects) {
-            // Unmap memory
-            for (size_t i = 0; i < gameObject.uniformBuffersMemory.size(); i++) {
-                if (gameObject.uniformBuffersMapped[i] != nullptr) {
-                    gameObject.uniformBuffersMemory[i].unmapMemory();
-                }
-            }
-
-            // Clear vectors to release resources
-            gameObject.uniformBuffers.clear();
-            gameObject.uniformBuffersMemory.clear();
-            gameObject.uniformBuffersMapped.clear();
-            gameObject.descriptorSets.clear();
-        }
-
-        // Clean up GLFW resources
+    void cleanup() const {
         glfwDestroyWindow(window);
         glfwTerminate();
     }
@@ -450,23 +386,21 @@ private:
     }
 
     void createInstance() {
-
-
-        vk::ApplicationInfo appInfo{};
-        appInfo.pApplicationName = "Hello Triangle";
-        appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.pEngineName = "No Engine";
-        appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.apiVersion = VK_API_VERSION_1_3;
-        
+        constexpr vk::ApplicationInfo appInfo{
+            .pApplicationName = "Hello Triangle",
+            .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+            .pEngineName = "No Engine",
+            .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+            .apiVersion = VK_API_VERSION_1_3
+        };
 
         auto extensions = getRequiredExtensions();
 
-        vk::InstanceCreateInfo createInfo{};
-        createInfo.setPApplicationInfo(&appInfo);
-        createInfo.setEnabledExtensionCount(static_cast<uint32_t>(extensions.size()));
-        createInfo.setPpEnabledExtensionNames(extensions.data());
-        
+        vk::InstanceCreateInfo createInfo{
+            .pApplicationInfo = &appInfo,
+            .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+            .ppEnabledExtensionNames = extensions.data()
+        };
 
         instance = vk::raii::Instance(context, createInfo);
         LOGI("Vulkan instance created");
@@ -618,10 +552,7 @@ private:
         features.pNext = &vulkan13Features;
         // create a Device
         float                     queuePriority = 0.0f;
-        vk::DeviceQueueCreateInfo deviceQueueCreateInfo ;
-         deviceQueueCreateInfo.setQueueFamilyIndex(queueIndex);
-         deviceQueueCreateInfo.setQueueCount( 1);
-         deviceQueueCreateInfo.setPQueuePriorities(&queuePriority);
+        vk::DeviceQueueCreateInfo deviceQueueCreateInfo { .queueFamilyIndex = queueIndex, .queueCount = 1, .pQueuePriorities = &queuePriority };
         vk::DeviceCreateInfo      deviceCreateInfo{
             .pNext =  &features,
             .queueCreateInfoCount = 1,
@@ -1098,54 +1029,30 @@ private:
         copyBuffer(stagingBuffer, indexBuffer, bufferSize);
     }
 
-    // Initialize the game objects with different positions, rotations, and scales
-    void setupGameObjects() {
-        // Object 1 - Center
-        gameObjects[0].position = {0.0f, 0.0f, 0.0f};
-        gameObjects[0].rotation = {0.0f, 0.0f, 0.0f};
-        gameObjects[0].scale = {1.0f, 1.0f, 1.0f};
-
-        // Object 2 - Left
-        gameObjects[1].position = {-2.0f, 0.0f, -1.0f};
-        gameObjects[1].rotation = {0.0f, glm::radians(45.0f), 0.0f};
-        gameObjects[1].scale = {0.75f, 0.75f, 0.75f};
-
-        // Object 3 - Right
-        gameObjects[2].position = {2.0f, 0.0f, -1.0f};
-        gameObjects[2].rotation = {0.0f, glm::radians(-45.0f), 0.0f};
-        gameObjects[2].scale = {0.75f, 0.75f, 0.75f};
-    }
-
-    // Create uniform buffers for each object
     void createUniformBuffers() {
-        // For each game object
-        for (auto& gameObject : gameObjects) {
-            gameObject.uniformBuffers.clear();
-            gameObject.uniformBuffersMemory.clear();
-            gameObject.uniformBuffersMapped.clear();
+        uniformBuffers.clear();
+        uniformBuffersMemory.clear();
+        uniformBuffersMapped.clear();
 
-            // Create uniform buffers for each frame in flight
-            for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-                vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
-                vk::raii::Buffer buffer({});
-                vk::raii::DeviceMemory bufferMem({});
-                createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, buffer, bufferMem);
-                gameObject.uniformBuffers.emplace_back(std::move(buffer));
-                gameObject.uniformBuffersMemory.emplace_back(std::move(bufferMem));
-                gameObject.uniformBuffersMapped.emplace_back(gameObject.uniformBuffersMemory[i].mapMemory(0, bufferSize));
-            }
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+            vk::raii::Buffer buffer({});
+            vk::raii::DeviceMemory bufferMem({});
+            createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, buffer, bufferMem);
+            uniformBuffers.emplace_back(std::move(buffer));
+            uniformBuffersMemory.emplace_back(std::move(bufferMem));
+            uniformBuffersMapped.emplace_back( uniformBuffersMemory[i].mapMemory(0, bufferSize));
         }
     }
 
     void createDescriptorPool() {
-        // We need MAX_OBJECTS * MAX_FRAMES_IN_FLIGHT descriptor sets
         std::array poolSize {
-            vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, MAX_OBJECTS * MAX_FRAMES_IN_FLIGHT),
-            vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, MAX_OBJECTS * MAX_FRAMES_IN_FLIGHT)
+            vk::DescriptorPoolSize( vk::DescriptorType::eUniformBuffer, MAX_FRAMES_IN_FLIGHT),
+            vk::DescriptorPoolSize(  vk::DescriptorType::eCombinedImageSampler, MAX_FRAMES_IN_FLIGHT)
         };
         vk::DescriptorPoolCreateInfo poolInfo{
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-            .maxSets = MAX_OBJECTS * MAX_FRAMES_IN_FLIGHT,
+            .maxSets = MAX_FRAMES_IN_FLIGHT,
             .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
             .pPoolSizes = poolSize.data()
         };
@@ -1153,50 +1060,46 @@ private:
     }
 
     void createDescriptorSets() {
-        // For each game object
-        for (auto& gameObject : gameObjects) {
-            // Create descriptor sets for each frame in flight
-            std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
-            vk::DescriptorSetAllocateInfo allocInfo{
-                .descriptorPool = *descriptorPool,
-                .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
-                .pSetLayouts = layouts.data()
+        std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
+        vk::DescriptorSetAllocateInfo allocInfo{
+            .descriptorPool = *descriptorPool,
+            .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+            .pSetLayouts = layouts.data()
+        };
+
+        descriptorSets.clear();
+        descriptorSets = device.allocateDescriptorSets(allocInfo);
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vk::DescriptorBufferInfo bufferInfo{
+                .buffer = *uniformBuffers[i],
+                .offset = 0,
+                .range = sizeof(UniformBufferObject)
             };
-
-            gameObject.descriptorSets.clear();
-            gameObject.descriptorSets = device.allocateDescriptorSets(allocInfo);
-
-            for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-                vk::DescriptorBufferInfo bufferInfo{
-                    .buffer = *gameObject.uniformBuffers[i],
-                    .offset = 0,
-                    .range = sizeof(UniformBufferObject)
-                };
-                vk::DescriptorImageInfo imageInfo{
-                    .sampler = *textureSampler,
-                    .imageView = *textureImageView,
-                    .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
-                };
-                std::array descriptorWrites{
-                    vk::WriteDescriptorSet{
-                        .dstSet = *gameObject.descriptorSets[i],
-                        .dstBinding = 0,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = vk::DescriptorType::eUniformBuffer,
-                        .pBufferInfo = &bufferInfo
-                    },
-                    vk::WriteDescriptorSet{
-                        .dstSet = *gameObject.descriptorSets[i],
-                        .dstBinding = 1,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-                        .pImageInfo = &imageInfo
-                    }
-                };
-                device.updateDescriptorSets(descriptorWrites, {});
-            }
+            vk::DescriptorImageInfo imageInfo{
+                .sampler = *textureSampler,
+                .imageView = *textureImageView,
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+            };
+            std::array descriptorWrites{
+                vk::WriteDescriptorSet{
+                    .dstSet = *descriptorSets[i],
+                    .dstBinding = 0,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = vk::DescriptorType::eUniformBuffer,
+                    .pBufferInfo = &bufferInfo
+                },
+                vk::WriteDescriptorSet{
+                    .dstSet = *descriptorSets[i],
+                    .dstBinding = 1,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                    .pImageInfo = &imageInfo
+                }
+            };
+            device.updateDescriptorSets(descriptorWrites, {});
         }
     }
 
@@ -1280,8 +1183,7 @@ private:
             vk::PipelineStageFlagBits2::eTopOfPipe,
             vk::PipelineStageFlagBits2::eColorAttachmentOutput
         );
-        vk::ClearValue clearColor = vk::ClearValue( vk::ClearColorValue(std::array<float,4>{0.0, 0.0, 0.0, 1.0}));
-        
+        vk::ClearValue clearColor = vk::ClearValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f});
         vk::RenderingAttachmentInfo attachmentInfo = {
             .imageView = *swapChainImageViews[imageIndex],
             .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
@@ -1299,26 +1201,10 @@ private:
         commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
         commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
         commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
-
-        // Bind vertex and index buffers (shared by all objects)
         commandBuffers[currentFrame].bindVertexBuffers(0, *vertexBuffer, {0});
-        commandBuffers[currentFrame].bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint32);
-
-        // Draw each object with its own descriptor set
-        for (const auto& gameObject : gameObjects) {
-            // Bind the descriptor set for this object
-            commandBuffers[currentFrame].bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics,
-                *pipelineLayout,
-                0,
-                *gameObject.descriptorSets[currentFrame],
-                nullptr
-            );
-
-            // Draw the object
-            commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
-        }
-
+        commandBuffers[currentFrame].bindIndexBuffer( *indexBuffer, 0, vk::IndexType::eUint32 );
+        commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, *descriptorSets[currentFrame], nullptr);
+        commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
         commandBuffers[currentFrame].endRendering();
         transition_image_layout(
             imageIndex,
@@ -1377,46 +1263,33 @@ private:
             renderFinishedSemaphore.emplace_back(device, vk::SemaphoreCreateInfo());
         }
 
+
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             inFlightFences.emplace_back(device, vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled });
         }
     }
 
-    void updateUniformBuffers() {
+    void updateUniformBuffer(uint32_t currentImage) const {
         static auto startTime = std::chrono::high_resolution_clock::now();
-        static auto lastFrameTime = startTime;
+
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float>(currentTime - startTime).count();
-        float deltaTime = std::chrono::duration<float>(currentTime - lastFrameTime).count();
-        lastFrameTime = currentTime;
 
-        // Camera and projection matrices (shared by all objects)
-        glm::mat4 view = glm::lookAt(glm::vec3(2.0f, 2.0f, 6.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 proj = glm::perspective(glm::radians(45.0f), static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height), 0.1f, 20.0f);
-        // Update uniform buffers for each object
-        for (auto& gameObject : gameObjects) {
-            // Apply continuous rotation to the object based on frame time
-            const float rotationSpeed = 0.5f; // Rotation speed in radians per second
-            gameObject.rotation.y += rotationSpeed * deltaTime; // Slow rotation around Y axis scaled by frame time
+        UniformBufferObject ubo{};
+        glm::mat4 initialRotation = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        glm::mat4 continuousRotation = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.model = continuousRotation * initialRotation;
+        ubo.view = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.proj = glm::perspective(glm::radians(45.0f), static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height), 0.1f, 10.0f);
+        ubo.proj[1][1] *= -1;
 
-            // Get the model matrix for this object
-            glm::mat4 model = gameObject.getModelMatrix();
-
-            // Create and update the UBO
-            UniformBufferObject ubo{
-                .model = model,
-                .view = view,
-                .proj = proj
-            };
-
-            // Copy the UBO data to the mapped memory
-            memcpy(gameObject.uniformBuffersMapped[currentFrame], &ubo, sizeof(ubo));
-        }
+        memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
 
     void drawFrame() {
-        while (vk::Result::eTimeout == device.waitForFences(*inFlightFences[currentFrame], vk::True, UINT64_MAX));
-        auto [result, imageIndex] = swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphore[currentFrame], nullptr);
+        while ( vk::Result::eTimeout == device.waitForFences( *inFlightFences[currentFrame], vk::True, UINT64_MAX ) )
+            ;
+        auto [result, imageIndex] = swapChain.acquireNextImage( UINT64_MAX, *presentCompleteSemaphore[currentFrame], nullptr );
 
         if (result == vk::Result::eErrorOutOfDateKHR) {
             recreateSwapChain();
@@ -1425,33 +1298,21 @@ private:
         if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
             throw std::runtime_error("failed to acquire swap chain image!");
         }
+        updateUniformBuffer(currentFrame);
 
-        // Update uniform buffers for all objects
-        updateUniformBuffers();
-
-        device.resetFences(*inFlightFences[currentFrame]);
+        device.resetFences(  *inFlightFences[currentFrame] );
         commandBuffers[currentFrame].reset();
         recordCommandBuffer(imageIndex);
 
-        vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
-        const vk::SubmitInfo submitInfo{
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &*presentCompleteSemaphore[currentFrame],
-            .pWaitDstStageMask = &waitDestinationStageMask,
-            .commandBufferCount = 1,
-            .pCommandBuffers = &*commandBuffers[currentFrame],
-            .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &*renderFinishedSemaphore[imageIndex]
-        };
+        vk::PipelineStageFlags waitDestinationStageMask( vk::PipelineStageFlagBits::eColorAttachmentOutput );
+        const vk::SubmitInfo submitInfo{ .waitSemaphoreCount = 1, .pWaitSemaphores = &*presentCompleteSemaphore[currentFrame],
+                            .pWaitDstStageMask = &waitDestinationStageMask, .commandBufferCount = 1, .pCommandBuffers = &*commandBuffers[currentFrame],
+                            .signalSemaphoreCount = 1, .pSignalSemaphores = &*renderFinishedSemaphore[imageIndex] };
         queue.submit(submitInfo, *inFlightFences[currentFrame]);
 
-        const vk::PresentInfoKHR presentInfoKHR{
-            .waitSemaphoreCount = 1,
-            .pWaitSemaphores = &*renderFinishedSemaphore[imageIndex],
-            .swapchainCount = 1,
-            .pSwapchains = &*swapChain,
-            .pImageIndices = &imageIndex
-        };
+
+        const vk::PresentInfoKHR presentInfoKHR{ .waitSemaphoreCount = 1, .pWaitSemaphores = &*renderFinishedSemaphore[imageIndex],
+                                                .swapchainCount = 1, .pSwapchains = &*swapChain, .pImageIndices = &imageIndex };
         result = queue.presentKHR(presentInfoKHR);
         if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
             framebufferResized = false;
@@ -1564,4 +1425,22 @@ private:
     }
 };
 
+#if PLATFORM_ANDROID
+void android_main(android_app* app) {
+    app_dummy();
 
+    VulkanApplication vulkanApp;
+    vulkanApp.run(app);
+}
+#else
+int main() {
+    try {
+        VulkanApplication app;
+        app.run();
+    } catch (const std::exception& e) {
+        LOGE("%s", e.what());
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+#endif
