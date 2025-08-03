@@ -3,7 +3,7 @@ include(CheckIncludeFile)
 set(FETCHCONTENT_BASE_DIR "${CMAKE_BINARY_DIR}/external")
 add_executable(game 
   main.cpp
-  #vulkanapp.cpp
+  vulkanApplication.cpp
   #drawableObject.cpp
 )
 set_target_properties(game PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

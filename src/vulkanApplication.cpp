@@ -1,5 +1,3 @@
-#include <cmath>
-#define VULKAN_HPP_NO_CONSTRUCTORS
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -13,23 +11,14 @@
 #include <chrono>
 #include <optional>
 
-#ifdef __INTELLISENSE__
+#define VULKAN_HPP_NO_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
-#else
-#include <vulkan/vulkan_raii.hpp>
-#endif
+
 #include <vulkan/vk_platform.h>
-#if defined(__ANDROID__)
-#include <vulkan/vulkan_core.h>
-#include <vulkan/vulkan_android.h>
-#endif
+
 #include <vulkan/vulkan_profiles.hpp>
 
-#if defined(__ANDROID__)
-    #define PLATFORM_ANDROID 1
-#else
-    #define PLATFORM_DESKTOP 1
-#endif
+
 
 // Include tinygltf instead of tinyobjloader
 // TINYGLTF_IMPLEMENTATION is already defined in the command line
@@ -39,36 +28,18 @@
 // Include KTX library for texture loading
 #include <ktx.h>
 
-#if PLATFORM_ANDROID
-    #include <android/log.h>
-    #include <game-activity/native_app_glue/android_native_app_glue.h>
-    #include <android/asset_manager.h>
-    #include <android/asset_manager_jni.h>
 
-    // Declare and implement app_dummy function from native_app_glue
-    extern "C" void app_dummy() {
-        // This is a dummy function that does nothing
-        // It's used to prevent the linker from stripping out the native_app_glue code
-    }
+// Define AAssetManager type for non-Android platforms
+typedef void AssetManagerType;
+// Desktop-specific includes
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 
-    // Define AAssetManager type for Android
-    typedef AAssetManager AssetManagerType;
+// Define logging macros for Desktop
+#define LOGI(...) printf(__VA_ARGS__); printf("\n")
+#define LOGW(...) printf(__VA_ARGS__); printf("\n")
+#define LOGE(...) fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n")
 
-    #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "VulkanTutorial", __VA_ARGS__))
-    #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "VulkanTutorial", __VA_ARGS__))
-    #define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "VulkanTutorial", __VA_ARGS__))
-#else
-    // Define AAssetManager type for non-Android platforms
-    typedef void AssetManagerType;
-    // Desktop-specific includes
-    #define GLFW_INCLUDE_VULKAN
-    #include <GLFW/glfw3.h>
-
-    // Define logging macros for Desktop
-    #define LOGI(...) printf(__VA_ARGS__); printf("\n")
-    #define LOGW(...) printf(__VA_ARGS__); printf("\n")
-    #define LOGE(...) fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n")
-#endif
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -82,20 +53,15 @@ constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 constexpr uint64_t FenceTimeout = 100000000;
 // Update paths to use glTF model and KTX2 texture
-const std::string MODEL_PATH = "models/viking_room.glb";
-const std::string TEXTURE_PATH = "textures/viking_room.ktx2";
+const std::string MODEL_PATH = "../models/viking_room.glb";
+const std::string TEXTURE_PATH = "../textures/viking_room.ktx2";
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+// Define the number of objects to render
+constexpr int MAX_OBJECTS = 3;
 
 // Define VpProfileProperties structure for Android only
-#if PLATFORM_ANDROID
-#ifndef VP_PROFILE_PROPERTIES_DEFINED
-#define VP_PROFILE_PROPERTIES_DEFINED
-struct VpProfileProperties {
-    char name[256];
-    uint32_t specVersion;
-};
-#endif
-#endif
+
+
 
 // Define Vulkan Profile constants
 #ifndef VP_KHR_ROADMAP_2022_NAME
@@ -111,15 +77,7 @@ struct AppInfo {
     VpProfileProperties profile;
 };
 
-#if PLATFORM_ANDROID
-void android_main(android_app* app);
 
-struct AndroidAppState {
-    ANativeWindow* nativeWindow = nullptr;
-    bool initialized = false;
-    android_app* app = nullptr;
-};
-#endif
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
@@ -127,33 +85,10 @@ constexpr bool enableValidationLayers = false;
 constexpr bool enableValidationLayers = true;
 #endif
 
-struct Vertex {
-    glm::vec3 pos;
-    glm::vec3 color;
-    glm::vec2 texCoord;
+#include "vertex.hpp"
 
-    static vk::VertexInputBindingDescription getBindingDescription() {
-        return { 0, sizeof(Vertex), vk::VertexInputRate::eVertex };
-    }
-
-    static std::array<vk::VertexInputAttributeDescription, 3> getAttributeDescriptions() {
-        return {
-            vk::VertexInputAttributeDescription( 0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, pos) ),
-            vk::VertexInputAttributeDescription( 1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color) ),
-            vk::VertexInputAttributeDescription( 2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord) )
-        };
-    }
-
-    bool operator==(const Vertex& other) const {
-        return pos == other.pos && color == other.color && texCoord == other.texCoord;
-    }
-};
-
-template<> struct std::hash<Vertex> {
-    size_t operator()(Vertex const& vertex) const noexcept {
-        return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
-    }
-};
+// Define a structure to hold per-object data
+#include "gameObject.hpp"
 
 struct UniformBufferObject {
     alignas(16) glm::mat4 model;
@@ -163,84 +98,20 @@ struct UniformBufferObject {
 
 class VulkanApplication {
 public:
-#if PLATFORM_ANDROID
-    void run(android_app* app) {
-        androidAppState.nativeWindow = app->window;
-        androidAppState.app = app;
-        app->userData = &androidAppState;
-        app->onAppCmd = handleAppCommand;
-        // Note: onInputEvent is no longer a member of android_app in the current NDK version
-        // Input events are now handled differently
-
-        int events;
-        android_poll_source* source;
-
-        while (app->destroyRequested == 0) {
-            while (ALooper_pollOnce(androidAppState.initialized ? 0 : -1, nullptr, &events, (void**)&source) >= 0) {
-                if (source != nullptr) {
-                    source->process(app, source);
-                }
-            }
-
-            if (androidAppState.initialized && androidAppState.nativeWindow != nullptr) {
-                drawFrame();
-            }
-        }
-
-        if (androidAppState.initialized) {
-            device.waitIdle();
-        }
-    }
-#else
     void run() {
         initWindow();
         initVulkan();
         mainLoop();
         cleanup();
     }
-#endif
+
 
 private:
-#if PLATFORM_ANDROID
-    AndroidAppState androidAppState;
 
-    static void handleAppCommand(android_app* app, int32_t cmd) {
-        auto* appState = static_cast<AndroidAppState*>(app->userData);
-
-        switch (cmd) {
-            case APP_CMD_INIT_WINDOW:
-                if (app->window != nullptr) {
-                    appState->nativeWindow = app->window;
-                    // We can't cast AndroidAppState to VulkanApplication directly
-                    // Instead, we need to access the VulkanApplication instance through a global variable
-                    // or another mechanism. For now, we'll just set the initialized flag.
-                    appState->initialized = true;
-                }
-                break;
-            case APP_CMD_TERM_WINDOW:
-                appState->nativeWindow = nullptr;
-                break;
-            default:
-                break;
-        }
-    }
-
-    static int32_t handleInputEvent(android_app* app, AInputEvent* event) {
-        if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
-            float x = AMotionEvent_getX(event, 0);
-            float y = AMotionEvent_getY(event, 0);
-
-            LOGI("Touch at: %f, %f", x, y);
-
-            return 1;
-        }
-        return 0;
-    }
-#else
     GLFWwindow* window = nullptr;
-#endif
 
-    AppInfo appInfo;
+
+    AppInfo appInfo = {};
     vk::raii::Context                context;
     vk::raii::Instance               instance       = nullptr;
     vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
@@ -277,12 +148,10 @@ private:
     vk::raii::Buffer indexBuffer = nullptr;
     vk::raii::DeviceMemory indexBufferMemory = nullptr;
 
-    std::vector<vk::raii::Buffer> uniformBuffers;
-    std::vector<vk::raii::DeviceMemory> uniformBuffersMemory;
-    std::vector<void*> uniformBuffersMapped;
+    // Array of game objects to render
+    std::array<GameObject, MAX_OBJECTS> gameObjects;
 
     vk::raii::DescriptorPool descriptorPool = nullptr;
-    std::vector<vk::raii::DescriptorSet> descriptorSets;
 
     vk::raii::CommandPool commandPool = nullptr;
     std::vector<vk::raii::CommandBuffer> commandBuffers;
@@ -299,7 +168,7 @@ private:
         vk::KHRCreateRenderpass2ExtensionName
     };
 
-#if PLATFORM_DESKTOP
+
     void initWindow() {
         glfwInit();
 
@@ -314,7 +183,7 @@ private:
         auto app = static_cast<VulkanApplication*>(glfwGetWindowUserPointer(window));
         app->framebufferResized = true;
     }
-#endif
+
 
 public:
     void initVulkan() {
@@ -335,6 +204,7 @@ public:
         loadModel();
         createVertexBuffer();
         createIndexBuffer();
+        setupGameObjects();
         createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
@@ -344,7 +214,7 @@ public:
 
 private:
 
-#if PLATFORM_DESKTOP
+
     void mainLoop() {
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
@@ -353,29 +223,46 @@ private:
 
         device.waitIdle();
     }
-#endif
+
 
     void cleanupSwapChain() {
         swapChainImageViews.clear();
         swapChain = nullptr;
     }
 
-#if PLATFORM_DESKTOP
-    void cleanup() const {
+
+    void cleanup() {
+        // Clean up resources in each GameObject
+        for (auto& gameObject : gameObjects) {
+            // Unmap memory
+            for (size_t i = 0; i < gameObject.uniformBuffersMemory.size(); i++) {
+                if (gameObject.uniformBuffersMapped[i] != nullptr) {
+                    gameObject.uniformBuffersMemory[i].unmapMemory();
+                }
+            }
+
+            // Clear vectors to release resources
+            gameObject.uniformBuffers.clear();
+            gameObject.uniformBuffersMemory.clear();
+            gameObject.uniformBuffersMapped.clear();
+            gameObject.descriptorSets.clear();
+        }
+
+        // Clean up GLFW resources
         glfwDestroyWindow(window);
         glfwTerminate();
     }
-#endif
+
 
     void recreateSwapChain() {
-#if PLATFORM_DESKTOP
+
         int width = 0, height = 0;
         glfwGetFramebufferSize(window, &width, &height);
         while (width == 0 || height == 0) {
             glfwGetFramebufferSize(window, &width, &height);
             glfwWaitEvents();
         }
-#endif
+
 
         device.waitIdle();
 
@@ -415,23 +302,11 @@ private:
     }
 
     void createSurface() {
-#if PLATFORM_DESKTOP
         VkSurfaceKHR _surface;
         if (glfwCreateWindowSurface(*instance, window, nullptr, &_surface) != VK_SUCCESS) {
             throw std::runtime_error("failed to create window surface!");
         }
         surface = vk::raii::SurfaceKHR(instance, _surface);
-#else
-        VkSurfaceKHR _surface;
-        VkAndroidSurfaceCreateInfoKHR createInfo{
-            .sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR,
-            .window = androidAppState.nativeWindow
-        };
-        if (vkCreateAndroidSurfaceKHR(*instance, &createInfo, nullptr, &_surface) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create Android surface!");
-        }
-        surface = vk::raii::SurfaceKHR(instance, _surface);
-#endif
     }
 
     void pickPhysicalDevice() {
@@ -470,30 +345,15 @@ private:
 
             // Check for Vulkan profile support
             VpProfileProperties profileProperties;
-#if PLATFORM_ANDROID
-            strcpy(profileProperties.name, VP_KHR_ROADMAP_2022_NAME);
-#else
+
             strcpy(profileProperties.profileName, VP_KHR_ROADMAP_2022_NAME);
-#endif
+
             profileProperties.specVersion = VP_KHR_ROADMAP_2022_SPEC_VERSION;
 
             VkBool32 supported = VK_FALSE;
             bool result = false;
 
-#if PLATFORM_ANDROID
-            // Create a vp::ProfileDesc from our VpProfileProperties
-            vp::ProfileDesc profileDesc = {
-                profileProperties.name,
-                profileProperties.specVersion
-            };
 
-            // Use vp::GetProfileSupport for Android
-            result = vp::GetProfileSupport(
-                *physicalDevice,  // Pass the physical device directly
-                &profileDesc,     // Pass the profile description
-                &supported        // Output parameter for support status
-            );
-#else
             // Use vpGetPhysicalDeviceProfileSupport for Desktop
             VkResult vk_result = vpGetPhysicalDeviceProfileSupport(
                 *instance,
@@ -502,13 +362,11 @@ private:
                 &supported
             );
             result = vk_result == static_cast<int>(vk::Result::eSuccess);
-#endif
+
             const char* name = nullptr;
-#ifdef PLATFORM_ANDROID
-            name = profileProperties.name;
-#else
+
             name = profileProperties.profileName;
-#endif
+
 
             if (result && supported == VK_TRUE) {
                 appInfo.profileSupported = true;
@@ -1029,30 +887,54 @@ private:
         copyBuffer(stagingBuffer, indexBuffer, bufferSize);
     }
 
-    void createUniformBuffers() {
-        uniformBuffers.clear();
-        uniformBuffersMemory.clear();
-        uniformBuffersMapped.clear();
+    // Initialize the game objects with different positions, rotations, and scales
+    void setupGameObjects() {
+        // Object 1 - Center
+        gameObjects[0].position = {0.0f, 0.0f, 0.0f};
+        gameObjects[0].rotation = {0.0f, 0.0f, 0.0f};
+        gameObjects[0].scale = {1.0f, 1.0f, 1.0f};
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
-            vk::raii::Buffer buffer({});
-            vk::raii::DeviceMemory bufferMem({});
-            createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, buffer, bufferMem);
-            uniformBuffers.emplace_back(std::move(buffer));
-            uniformBuffersMemory.emplace_back(std::move(bufferMem));
-            uniformBuffersMapped.emplace_back( uniformBuffersMemory[i].mapMemory(0, bufferSize));
+        // Object 2 - Left
+        gameObjects[1].position = {-2.0f, 0.0f, -1.0f};
+        gameObjects[1].rotation = {0.0f, glm::radians(45.0f), 0.0f};
+        gameObjects[1].scale = {0.75f, 0.75f, 0.75f};
+
+        // Object 3 - Right
+        gameObjects[2].position = {2.0f, 0.0f, -1.0f};
+        gameObjects[2].rotation = {0.0f, glm::radians(-45.0f), 0.0f};
+        gameObjects[2].scale = {0.75f, 0.75f, 0.75f};
+    }
+
+    // Create uniform buffers for each object
+    void createUniformBuffers() {
+        // For each game object
+        for (auto& gameObject : gameObjects) {
+            gameObject.uniformBuffers.clear();
+            gameObject.uniformBuffersMemory.clear();
+            gameObject.uniformBuffersMapped.clear();
+
+            // Create uniform buffers for each frame in flight
+            for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+                vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+                vk::raii::Buffer buffer({});
+                vk::raii::DeviceMemory bufferMem({});
+                createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, buffer, bufferMem);
+                gameObject.uniformBuffers.emplace_back(std::move(buffer));
+                gameObject.uniformBuffersMemory.emplace_back(std::move(bufferMem));
+                gameObject.uniformBuffersMapped.emplace_back(gameObject.uniformBuffersMemory[i].mapMemory(0, bufferSize));
+            }
         }
     }
 
     void createDescriptorPool() {
+        // We need MAX_OBJECTS * MAX_FRAMES_IN_FLIGHT descriptor sets
         std::array poolSize {
-            vk::DescriptorPoolSize( vk::DescriptorType::eUniformBuffer, MAX_FRAMES_IN_FLIGHT),
-            vk::DescriptorPoolSize(  vk::DescriptorType::eCombinedImageSampler, MAX_FRAMES_IN_FLIGHT)
+            vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, MAX_OBJECTS * MAX_FRAMES_IN_FLIGHT),
+            vk::DescriptorPoolSize(vk::DescriptorType::eCombinedImageSampler, MAX_OBJECTS * MAX_FRAMES_IN_FLIGHT)
         };
         vk::DescriptorPoolCreateInfo poolInfo{
             .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-            .maxSets = MAX_FRAMES_IN_FLIGHT,
+            .maxSets = MAX_OBJECTS * MAX_FRAMES_IN_FLIGHT,
             .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
             .pPoolSizes = poolSize.data()
         };
@@ -1060,46 +942,50 @@ private:
     }
 
     void createDescriptorSets() {
-        std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
-        vk::DescriptorSetAllocateInfo allocInfo{
-            .descriptorPool = *descriptorPool,
-            .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
-            .pSetLayouts = layouts.data()
-        };
+        // For each game object
+        for (auto& gameObject : gameObjects) {
+            // Create descriptor sets for each frame in flight
+            std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout);
+            vk::DescriptorSetAllocateInfo allocInfo{
+                .descriptorPool = *descriptorPool,
+                .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+                .pSetLayouts = layouts.data()
+            };
 
-        descriptorSets.clear();
-        descriptorSets = device.allocateDescriptorSets(allocInfo);
+            gameObject.descriptorSets.clear();
+            gameObject.descriptorSets = device.allocateDescriptorSets(allocInfo);
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vk::DescriptorBufferInfo bufferInfo{
-                .buffer = *uniformBuffers[i],
-                .offset = 0,
-                .range = sizeof(UniformBufferObject)
-            };
-            vk::DescriptorImageInfo imageInfo{
-                .sampler = *textureSampler,
-                .imageView = *textureImageView,
-                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
-            };
-            std::array descriptorWrites{
-                vk::WriteDescriptorSet{
-                    .dstSet = *descriptorSets[i],
-                    .dstBinding = 0,
-                    .dstArrayElement = 0,
-                    .descriptorCount = 1,
-                    .descriptorType = vk::DescriptorType::eUniformBuffer,
-                    .pBufferInfo = &bufferInfo
-                },
-                vk::WriteDescriptorSet{
-                    .dstSet = *descriptorSets[i],
-                    .dstBinding = 1,
-                    .dstArrayElement = 0,
-                    .descriptorCount = 1,
-                    .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-                    .pImageInfo = &imageInfo
-                }
-            };
-            device.updateDescriptorSets(descriptorWrites, {});
+            for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+                vk::DescriptorBufferInfo bufferInfo{
+                    .buffer = *gameObject.uniformBuffers[i],
+                    .offset = 0,
+                    .range = sizeof(UniformBufferObject)
+                };
+                vk::DescriptorImageInfo imageInfo{
+                    .sampler = *textureSampler,
+                    .imageView = *textureImageView,
+                    .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+                };
+                std::array descriptorWrites{
+                    vk::WriteDescriptorSet{
+                        .dstSet = *gameObject.descriptorSets[i],
+                        .dstBinding = 0,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eUniformBuffer,
+                        .pBufferInfo = &bufferInfo
+                    },
+                    vk::WriteDescriptorSet{
+                        .dstSet = *gameObject.descriptorSets[i],
+                        .dstBinding = 1,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                        .pImageInfo = &imageInfo
+                    }
+                };
+                device.updateDescriptorSets(descriptorWrites, {});
+            }
         }
     }
 
@@ -1183,7 +1069,7 @@ private:
             vk::PipelineStageFlagBits2::eTopOfPipe,
             vk::PipelineStageFlagBits2::eColorAttachmentOutput
         );
-        vk::ClearValue clearColor = vk::ClearValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f});
+        vk::ClearValue clearColor = vk::ClearValue{};
         vk::RenderingAttachmentInfo attachmentInfo = {
             .imageView = *swapChainImageViews[imageIndex],
             .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
@@ -1201,10 +1087,26 @@ private:
         commandBuffers[currentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
         commandBuffers[currentFrame].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
         commandBuffers[currentFrame].setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
+
+        // Bind vertex and index buffers (shared by all objects)
         commandBuffers[currentFrame].bindVertexBuffers(0, *vertexBuffer, {0});
-        commandBuffers[currentFrame].bindIndexBuffer( *indexBuffer, 0, vk::IndexType::eUint32 );
-        commandBuffers[currentFrame].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, *descriptorSets[currentFrame], nullptr);
-        commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
+        commandBuffers[currentFrame].bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint32);
+
+        // Draw each object with its own descriptor set
+        for (const auto& gameObject : gameObjects) {
+            // Bind the descriptor set for this object
+            commandBuffers[currentFrame].bindDescriptorSets(
+                vk::PipelineBindPoint::eGraphics,
+                *pipelineLayout,
+                0,
+                *gameObject.descriptorSets[currentFrame],
+                nullptr
+            );
+
+            // Draw the object
+            commandBuffers[currentFrame].drawIndexed(indices.size(), 1, 0, 0, 0);
+        }
+
         commandBuffers[currentFrame].endRendering();
         transition_image_layout(
             imageIndex,
@@ -1263,33 +1165,46 @@ private:
             renderFinishedSemaphore.emplace_back(device, vk::SemaphoreCreateInfo());
         }
 
-
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             inFlightFences.emplace_back(device, vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled });
         }
     }
 
-    void updateUniformBuffer(uint32_t currentImage) const {
+    void updateUniformBuffers() {
         static auto startTime = std::chrono::high_resolution_clock::now();
-
+        static auto lastFrameTime = startTime;
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float>(currentTime - startTime).count();
+        float deltaTime = std::chrono::duration<float>(currentTime - lastFrameTime).count();
+        lastFrameTime = currentTime;
 
-        UniformBufferObject ubo{};
-        glm::mat4 initialRotation = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        glm::mat4 continuousRotation = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.model = continuousRotation * initialRotation;
-        ubo.view = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height), 0.1f, 10.0f);
-        ubo.proj[1][1] *= -1;
+        // Camera and projection matrices (shared by all objects)
+        glm::mat4 view = glm::lookAt(glm::vec3(2.0f, 2.0f, 6.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 proj = glm::perspective(glm::radians(45.0f), static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height), 0.1f, 20.0f);
+        // Update uniform buffers for each object
+        for (auto& gameObject : gameObjects) {
+            // Apply continuous rotation to the object based on frame time
+            const float rotationSpeed = 0.5f; // Rotation speed in radians per second
+            gameObject.rotation.y += rotationSpeed * deltaTime; // Slow rotation around Y axis scaled by frame time
 
-        memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+            // Get the model matrix for this object
+            glm::mat4 model = gameObject.getModelMatrix();
+
+            // Create and update the UBO
+            UniformBufferObject ubo{
+                .model = model,
+                .view = view,
+                .proj = proj
+            };
+
+            // Copy the UBO data to the mapped memory
+            memcpy(gameObject.uniformBuffersMapped[currentFrame], &ubo, sizeof(ubo));
+        }
     }
 
     void drawFrame() {
-        while ( vk::Result::eTimeout == device.waitForFences( *inFlightFences[currentFrame], vk::True, UINT64_MAX ) )
-            ;
-        auto [result, imageIndex] = swapChain.acquireNextImage( UINT64_MAX, *presentCompleteSemaphore[currentFrame], nullptr );
+        while (vk::Result::eTimeout == device.waitForFences(*inFlightFences[currentFrame], vk::True, UINT64_MAX));
+        auto [result, imageIndex] = swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphore[currentFrame], nullptr);
 
         if (result == vk::Result::eErrorOutOfDateKHR) {
             recreateSwapChain();
@@ -1298,21 +1213,33 @@ private:
         if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
             throw std::runtime_error("failed to acquire swap chain image!");
         }
-        updateUniformBuffer(currentFrame);
 
-        device.resetFences(  *inFlightFences[currentFrame] );
+        // Update uniform buffers for all objects
+        updateUniformBuffers();
+
+        device.resetFences(*inFlightFences[currentFrame]);
         commandBuffers[currentFrame].reset();
         recordCommandBuffer(imageIndex);
 
-        vk::PipelineStageFlags waitDestinationStageMask( vk::PipelineStageFlagBits::eColorAttachmentOutput );
-        const vk::SubmitInfo submitInfo{ .waitSemaphoreCount = 1, .pWaitSemaphores = &*presentCompleteSemaphore[currentFrame],
-                            .pWaitDstStageMask = &waitDestinationStageMask, .commandBufferCount = 1, .pCommandBuffers = &*commandBuffers[currentFrame],
-                            .signalSemaphoreCount = 1, .pSignalSemaphores = &*renderFinishedSemaphore[imageIndex] };
+        vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+        const vk::SubmitInfo submitInfo{
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &*presentCompleteSemaphore[currentFrame],
+            .pWaitDstStageMask = &waitDestinationStageMask,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &*commandBuffers[currentFrame],
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &*renderFinishedSemaphore[imageIndex]
+        };
         queue.submit(submitInfo, *inFlightFences[currentFrame]);
 
-
-        const vk::PresentInfoKHR presentInfoKHR{ .waitSemaphoreCount = 1, .pWaitSemaphores = &*renderFinishedSemaphore[imageIndex],
-                                                .swapchainCount = 1, .pSwapchains = &*swapChain, .pImageIndices = &imageIndex };
+        const vk::PresentInfoKHR presentInfoKHR{
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &*renderFinishedSemaphore[imageIndex],
+            .swapchainCount = 1,
+            .pSwapchains = &*swapChain,
+            .pImageIndices = &imageIndex
+        };
         result = queue.presentKHR(presentInfoKHR);
         if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
             framebufferResized = false;
@@ -1343,14 +1270,8 @@ private:
         if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
             return capabilities.currentExtent;
         }
-#if PLATFORM_DESKTOP
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
-#else
-        ANativeWindow* window = androidAppState.nativeWindow;
-        int width = ANativeWindow_getWidth(window);
-        int height = ANativeWindow_getHeight(window);
-#endif
         return {
             std::clamp<uint32_t>(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
             std::clamp<uint32_t>(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
@@ -1360,16 +1281,12 @@ private:
     [[nodiscard]] std::vector<const char*> getRequiredExtensions() const {
         std::vector<const char*> extensions;
 
-#if PLATFORM_DESKTOP
+
         // Get GLFW extensions
         uint32_t glfwExtensionCount = 0;
         auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
         extensions.assign(glfwExtensions, glfwExtensions + glfwExtensionCount);
-#else
-        // Android extensions
-        extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-        extensions.push_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
-#endif
+
 
         // Add debug extensions if validation layers are enabled
         if (enableValidationLayers) {
@@ -1393,22 +1310,7 @@ private:
     }
 
     std::vector<char> readFile(const std::string& filename) {
-#if PLATFORM_ANDROID
-        // Android asset loading
-        if (androidAppState.app == nullptr) {
-            LOGE("Android app not initialized");
-            throw std::runtime_error("Android app not initialized");
-        }
-        AAsset* asset = AAssetManager_open(androidAppState.app->activity->assetManager, filename.c_str(), AASSET_MODE_BUFFER);
-        if (!asset) {
-            throw std::runtime_error("failed to open file: " + filename);
-        }
 
-        size_t size = AAsset_getLength(asset);
-        std::vector<char> buffer(size);
-        AAsset_read(asset, buffer.data(), size);
-        AAsset_close(asset);
-#else
         // Desktop file loading
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
         if (!file.is_open()) {
@@ -1420,27 +1322,8 @@ private:
         file.seekg(0);
         file.read(buffer.data(), fileSize);
         file.close();
-#endif
         return buffer;
     }
 };
 
-#if PLATFORM_ANDROID
-void android_main(android_app* app) {
-    app_dummy();
 
-    VulkanApplication vulkanApp;
-    vulkanApp.run(app);
-}
-#else
-int main() {
-    try {
-        VulkanApplication app;
-        app.run();
-    } catch (const std::exception& e) {
-        LOGE("%s", e.what());
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
-}
-#endif
