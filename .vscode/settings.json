@@ -69,6 +69,13 @@
         "list": "cpp",
         "typeindex": "cpp",
         "codecvt": "cpp",
-        "complex": "cpp"
+        "complex": "cpp",
+        "any": "cpp",
+        "bitset": "cpp",
+        "cfenv": "cpp",
+        "forward_list": "cpp",
+        "regex": "cpp",
+        "future": "cpp",
+        "valarray": "cpp"
     }
 }

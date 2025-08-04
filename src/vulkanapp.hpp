@@ -65,18 +65,32 @@ namespace std {
 }
 
 
-
+template<void (*Func)(GLFWwindow*, int, int, int, int),int  keyCode>
+void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    if(keyCode == key){
+        Func(window, key, scancode, action, mods);
+    }
+}
+template<void (*Func)(GLFWwindow*, int, int, int, int)>
+void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    Func(window, key, scancode, action, mods);
+}
 
 constexpr int MAX_OBJECTS = 3;
 
 class VulkanApp {
 public:
     void run();
+    void Init();
+    void mainLoopStep();
+    inline static std::vector<std::function<void (GLFWwindow *, int , int , int , int )>> keyfunc;
+    void cleanup();
+    bool shouldWindowClose();
 private:
     void mainLoop();
-    void cleanup();
     void drawFrame();
-
 private:
 
     
@@ -143,6 +157,8 @@ private:
     std::vector<VkSemaphore> imageAvailableSemaphore;
     std::vector<VkSemaphore> renderFinishedSemaphore;
     std::vector<VkFence> inFlightFence;
+    
+
 private:
 
 

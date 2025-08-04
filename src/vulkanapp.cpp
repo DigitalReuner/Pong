@@ -21,11 +21,18 @@ const std::string MODEL_PATH = "../models/viking_room.obj";
 const std::string TEXTURE_PATH = "../textures/viking_room.png";
 
 void VulkanApp::run(){
-    initWindow();
-    initVulkan();
+    Init();
     mainLoop();
     cleanup();
 }
+
+void VulkanApp::Init()
+{
+    initWindow();
+    initVulkan();
+}
+
+
 
 void VulkanApp::initWindow()
 {
@@ -37,7 +44,15 @@ void VulkanApp::initWindow()
     window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan GLFW Window", nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+    glfwSetKeyCallback(window,[](GLFWwindow *window, int key, int scancode, int action, int mods){    
+w        for(auto& func:VulkanApp::keyfunc){
+        func(window,  key,  scancode,  action,  mods);
+        }
+    });
+    
 }
+
+
 
 void VulkanApp::initVulkan()
 {
@@ -210,21 +225,11 @@ VkResult VulkanApp::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDe
 }
 
 void VulkanApp::setupGameObjects() {
-    // Object 1 - Center
+    
     gameObjects[0].position = {0.0f, 0.0f, 00.0f};
     gameObjects[0].rotation = {0.0f, 0.0f, 0.0f};
     gameObjects[0].scale = {1.0f, 1.0f, 1.0f};
-    //gameObjects[0].loadModel("../models/skull.obj");
-    // Object 2 - Left
-    gameObjects[1].position = {-40.0f, 0.0f, 0.0f};
-    gameObjects[1].rotation = {0.0f, glm::radians(45.0f), 0.0f};
-    gameObjects[1].scale = {1.0f, 1.0f, 1.0f};
-    //gameObjects[1].loadModel("../models/skull.obj");
-    // Object 3 - Right
-    gameObjects[2].position = {30.0f, 10.0f, -10.0f};
-    gameObjects[2].rotation = {0.0f, glm::radians(-45.0f), 0.0f};
-    gameObjects[2].scale = {0.75f, 0.75f, 0.75f};
-    //gameObjects[2].loadModel("../models/skull.obj");
+
 }
 
 void VulkanApp::createSurface()
@@ -442,14 +447,19 @@ uint32_t VulkanApp::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags pr
 
 void VulkanApp::mainLoop(){
     while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-        drawFrame();
+        mainLoopStep();
     }
     vkDeviceWaitIdle(device);
+}
+void VulkanApp::mainLoopStep()
+{
+    glfwPollEvents();
+    drawFrame();
 }
 
 void VulkanApp::cleanup()
 {
+    vkDeviceWaitIdle(device);
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyImageView(device, depthImageView, nullptr);
     vkDestroyImage(device, depthImage, nullptr);
@@ -1088,7 +1098,10 @@ void VulkanApp::drawFrame()
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-
+bool VulkanApp::shouldWindowClose()
+{
+    return glfwWindowShouldClose(window);
+}
 
 void VulkanApp::createSyncObjects()
 {
