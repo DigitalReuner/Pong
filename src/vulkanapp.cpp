@@ -60,7 +60,7 @@ void VulkanApp::initVulkan()
     createTextureSampler();
     setupGameObjects();
 
-    //loadModel("../models/skull.obj");
+    loadModel("../models/cat.obj");
     //loadModel(MODEL_PATH);
     createVertexBuffers();
     createIndexBuffers();
@@ -211,20 +211,20 @@ VkResult VulkanApp::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDe
 
 void VulkanApp::setupGameObjects() {
     // Object 1 - Center
-    gameObjects[0].position = {0.0f, 0.0f, 0.0f};
+    gameObjects[0].position = {0.0f, 0.0f, 00.0f};
     gameObjects[0].rotation = {0.0f, 0.0f, 0.0f};
     gameObjects[0].scale = {1.0f, 1.0f, 1.0f};
-    gameObjects[0].loadModel("../models/skull.obj");
+    //gameObjects[0].loadModel("../models/skull.obj");
     // Object 2 - Left
-    gameObjects[1].position = {-200.0f, 0.0f, -1.0f};
+    gameObjects[1].position = {-40.0f, 0.0f, 0.0f};
     gameObjects[1].rotation = {0.0f, glm::radians(45.0f), 0.0f};
-    gameObjects[1].scale = {0.75f, 0.75f, 0.75f};
-    gameObjects[1].loadModel("../models/skull.obj");
+    gameObjects[1].scale = {1.0f, 1.0f, 1.0f};
+    //gameObjects[1].loadModel("../models/skull.obj");
     // Object 3 - Right
-    gameObjects[2].position = {20.0f, 0.0f, -1.0f};
+    gameObjects[2].position = {30.0f, 10.0f, -10.0f};
     gameObjects[2].rotation = {0.0f, glm::radians(-45.0f), 0.0f};
     gameObjects[2].scale = {0.75f, 0.75f, 0.75f};
-    gameObjects[2].loadModel("../models/skull.obj");
+    //gameObjects[2].loadModel("../models/skull.obj");
 }
 
 void VulkanApp::createSurface()
@@ -472,13 +472,14 @@ void VulkanApp::cleanup()
             vkFreeMemory(device, gameObject.uniformBuffersMemory[i], nullptr);
         }
     }
-
-    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-    for(size_t i = 0; i < (size_t)MAX_FRAMES_IN_FLIGHT;i++){
-        vkDestroySemaphore(device, imageAvailableSemaphore[i], nullptr);
-        vkDestroySemaphore(device, renderFinishedSemaphore[i], nullptr);
-        vkDestroyFence(device, inFlightFence[i], nullptr);
-
+    for (auto& gameObject:gameObjects){
+        vkDestroyDescriptorSetLayout(device, gameObject.descriptorSetLayout, nullptr);
+        for(size_t i = 0; i < (size_t)MAX_FRAMES_IN_FLIGHT;i++){
+            vkDestroySemaphore(device, imageAvailableSemaphore[i], nullptr);
+            vkDestroySemaphore(device, renderFinishedSemaphore[i], nullptr);
+            vkDestroyFence(device, inFlightFence[i], nullptr);
+            
+        }
     }
     createCommandBuffers();
     vkDestroyCommandPool(device, commandPool, nullptr);
@@ -559,12 +560,12 @@ void VulkanApp::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize 
 
 void VulkanApp::createVertexBuffers()
 {
-    std::vector<Vertex> vertices;
-    for(auto &object:gameObjects){
-        for(auto &vert:object.vertices){
-            vertices.push_back(vert);
-        }
-    }
+    // std::vector<Vertex> vertices;
+    // for(auto &object:gameObjects){
+    //     for(auto &vert:object.vertices){
+    //         vertices.push_back(vert);
+    //     }
+    // }
 
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
@@ -587,14 +588,14 @@ void VulkanApp::createVertexBuffers()
 }
 void VulkanApp::createIndexBuffers()
 {
-    std::vector<uint32_t> indices;
-    uint32_t verticesOffset = 0;
-    for(auto &object:gameObjects){
-        for(auto &index:object.indices){
-            indices.push_back(verticesOffset + index);
-        }
-        verticesOffset += object.vertices.size();
-    }
+    // std::vector<uint32_t> indices;
+    // uint32_t verticesOffset = 0;
+    // for(auto &object:gameObjects){
+    //     for(auto &index:object.indices){
+    //         indices.push_back(verticesOffset + index);
+    //     }
+    //     verticesOffset += object.vertices.size();
+    // }
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
     VkBuffer stagingBuffer;
@@ -808,12 +809,14 @@ void VulkanApp::createGraphicsPipeline() {
     depthStencil.maxDepthBounds = 1.0f; // Optional
     
     
-    
-    
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
+    for(auto& gameObject:gameObjects) {
+        descriptorSetLayouts.push_back(gameObject.descriptorSetLayout);
+    }
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+    pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size();
+    pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
     pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
     pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
     
@@ -1016,22 +1019,12 @@ void VulkanApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
         // Bind the descriptor set for this object
         //bindDescriptorSets(vk::PipelineBindPoint::eGraphics,*pipelineLayout,0,*gameObject.descriptorSets[currentFrame],nullptr);
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &gameObject.descriptorSets[currentFrame], 0, nullptr);
+        //vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
     }
-    //vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-
-
-
-
-    u_int32_t indiciesSize = 0;
-    for(auto obj:gameObjects){
-        indiciesSize += obj.indices.size();
-    }
-
-
-
-    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indiciesSize), 1, 0, 0, 0);
-
-    vkCmdEndRenderPass(commandBuffer);
+        
+        vkCmdEndRenderPass(commandBuffer);
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to record command buffer!");
     }
@@ -1137,9 +1130,10 @@ void VulkanApp::createDescriptorSetLayout() {
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     layoutInfo.pBindings = bindings.data();
-
-    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create descriptor set layout!");
+    for(auto& gameObject:gameObjects){
+        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &gameObject.descriptorSetLayout) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor set layout!");
+        }
     }
 }
 
@@ -1171,17 +1165,18 @@ void VulkanApp::updateUniformBuffer(uint32_t currentImage) {
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
     
     //ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    glm::mat4 view = glm::lookAt(glm::vec3(50.0f, 50.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    glm::mat4 proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 1000.0f);
+    glm::mat4 view = glm::lookAt(glm::vec3(50.0f, 50.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = glm::perspective(glm::radians(80.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 1000.0f);
     proj[1][1] *= -1;
 
+    
 
     for (auto& gameObject : gameObjects) {
         // Apply continuous rotation to the object
-        gameObject.rotation.y += 0.001f; // Slow rotation around Y axis
-
+        gameObject.rotation.y += 0.001f * time; // Slow rotation around Y axis
+        
         // Get the model matrix for this object
-        glm::mat4 initialRotation = glm::rotate(glm::mat4(1.0f), time * glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        glm::mat4 initialRotation = glm::rotate(glm::mat4(1.0f),  glm::radians(-90.0f), glm::vec3(10.0f, 0.0f, 0.0f));
         glm::mat4 model = gameObject.getModelMatrix() * initialRotation;
 
         // Create and update the UBO
@@ -1220,11 +1215,11 @@ void VulkanApp::createDescriptorSets() {
 
     for(auto& gameObject:gameObjects)
     {
-        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, gameObject.descriptorSetLayout);
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = descriptorPool;
-        allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        allocInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
         allocInfo.pSetLayouts = layouts.data();
         gameObject.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
         if (vkAllocateDescriptorSets(device, &allocInfo, gameObject.descriptorSets.data()) != VK_SUCCESS) {
@@ -1248,7 +1243,7 @@ void VulkanApp::createDescriptorSets() {
             descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             descriptorWrites[0].descriptorCount = 1;
             descriptorWrites[0].pBufferInfo = &bufferInfo;
-            
+            //replace this test code todo
             descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[1].dstSet = gameObject.descriptorSets[i];
             descriptorWrites[1].dstBinding = 1;
@@ -1551,12 +1546,9 @@ bool VulkanApp::checkValidationLayerSupport()
     return true;
 }
 
+
 void VulkanApp::loadModel(const std::string &modelPath)
 {
-//make the compiler happy for testing 
-std::vector<Vertex> vertices;
-std::vector<uint32_t> indices;
-//usleless code brakes the func
 
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;

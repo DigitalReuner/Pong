@@ -9,22 +9,23 @@ struct Vertex;
 
 class DrawableObject{
 public:
-    std::string modelPath;
-    std::string textruePath;
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
+    // std::string modelPath;
+    // std::string textruePath;
+    // std::vector<Vertex> vertices;
+    // std::vector<uint32_t> indices;
 
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void*> uniformBuffersMapped;
 
     std::vector<VkDescriptorSet> descriptorSets;
+    VkDescriptorSetLayout descriptorSetLayout;
 
     glm::vec3 position = {0.0f, 0.0f, 0.0f};
     glm::vec3 rotation = {0.0f, 0.0f, 0.0f};
     glm::vec3 scale = {1.0f, 1.0f, 1.0f};
 
-    void loadModel(const std::string &modelPath);
+    //void loadModel(const std::string &modelPath);
     glm::mat4 getModelMatrix() const {
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, position);

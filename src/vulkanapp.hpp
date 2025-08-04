@@ -91,8 +91,8 @@ private:
     VkInstance instance;
     VkSurfaceKHR surface;
 
-    //std::vector<Vertex> vertices;
-    //std::vector<uint32_t> indices;
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
     std::array<DrawableObject, MAX_OBJECTS> gameObjects;
 
     VkBuffer vertexBuffer;
@@ -128,7 +128,7 @@ private:
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
-    VkDescriptorSetLayout descriptorSetLayout;
+    //std::array<VkDescriptorSetLayout,MAX_OBJECTS> descriptorSetLayouts;
     VkPipelineLayout pipelineLayout;
     VkRenderPass renderPass;
     VkPipeline graphicsPipeline;

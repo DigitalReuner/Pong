@@ -68,6 +68,7 @@
         "iomanip": "cpp",
         "list": "cpp",
         "typeindex": "cpp",
-        "codecvt": "cpp"
+        "codecvt": "cpp",
+        "complex": "cpp"
     }
 }
