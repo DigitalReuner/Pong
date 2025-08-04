@@ -45,7 +45,7 @@ void VulkanApp::initWindow()
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
     glfwSetKeyCallback(window,[](GLFWwindow *window, int key, int scancode, int action, int mods){    
-w        for(auto& func:VulkanApp::keyfunc){
+        for(auto& func:VulkanApp::keyfunc){
         func(window,  key,  scancode,  action,  mods);
         }
     });

@@ -78,7 +78,7 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
     Func(window, key, scancode, action, mods);
 }
 
-constexpr int MAX_OBJECTS = 3;
+constexpr int MAX_OBJECTS = 20;
 
 class VulkanApp {
 public:
