@@ -1,19 +1,13 @@
+#include "vulkanApplication.hpp"
 
-
-#include <iostream>
 int main() {
-    std::cout << "htobe1" << std::endl;
+    try {
+        VulkanApplication app;
+        app.run();
+    } catch (const std::exception& e) {
+        LOGE("%s", e.what());
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }
 
-
-// int main() {
-    // try {
-        // VulkanApplication app;
-        // app.run();
-    // } catch (const std::exception& e) {
-        // LOGE("%s", e.what());
-        // return EXIT_FAILURE;
-    // }
-    // return EXIT_SUCCESS;
-// }
-// #endif
