@@ -225,11 +225,11 @@ VkResult VulkanApp::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDe
 }
 
 void VulkanApp::setupGameObjects() {
-    
-    gameObjects[0].position = {0.0f, 0.0f, 00.0f};
-    gameObjects[0].rotation = {0.0f, 0.0f, 0.0f};
-    gameObjects[0].scale = {1.0f, 1.0f, 1.0f};
-
+    for(int i = 0; i < MAX_OBJECTS; i++){
+        gameObjects[i].position = {0.0f, 0.0f, -i * 20.0f};
+        gameObjects[i].rotation = {0.0f, 0.0f, 0.0f};
+        gameObjects[i].scale = {1.0f, 1.0f, 1.0f};
+    }
 }
 
 void VulkanApp::createSurface()
